@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from '@/lib/auth';
+import { logActivity } from '@/lib/activity';
 
 export async function POST(request: Request) {
     try {
@@ -22,6 +23,13 @@ export async function POST(request: Request) {
             .single();
 
         if (error) throw error;
+
+        await logActivity({
+            boardId: board_id,
+            userId: session.id,
+            action: 'created list',
+            metadata: { target_name: title }
+        });
 
         return NextResponse.json(list);
     } catch (error) {

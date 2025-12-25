@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from '@/lib/auth';
+import { logActivity } from '@/lib/activity';
 
 export async function GET(
     request: Request,
@@ -115,9 +116,62 @@ export async function PATCH(
 
         if (error) throw error;
 
+        await logActivity({
+            boardId,
+            userId: session.id,
+            action: 'updated board settings',
+            metadata: { name: body.name }
+        });
+
         return NextResponse.json(data);
     } catch (error) {
         console.error('Board PATCH error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ boardId: string }> }
+) {
+    try {
+        const session = await getServerSession();
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { boardId } = await params;
+
+        // Only owner can delete
+        const { data: board } = await supabaseAdmin
+            .from('boards')
+            .select('owner_id')
+            .eq('id', boardId)
+            .single();
+
+        if (!board) return NextResponse.json({ error: 'Board not found' }, { status: 404 });
+
+        if (board.owner_id !== session.id) {
+            return NextResponse.json({ error: 'Only the board owner can delete this board' }, { status: 403 });
+        }
+
+        const { error } = await supabaseAdmin
+            .from('boards')
+            .delete()
+            .eq('id', boardId);
+
+        if (error) throw error;
+
+        await logActivity({
+            boardId,
+            userId: session.id,
+            action: 'deleted the board',
+            metadata: { name: board.name }
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Board DELETE error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

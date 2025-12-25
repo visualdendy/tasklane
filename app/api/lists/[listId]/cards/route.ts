@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from '@/lib/auth';
+import { logActivity } from '@/lib/activity';
 
 export async function POST(
     request: Request,
@@ -12,6 +13,13 @@ export async function POST(
 
         const { listId } = await params;
         const { title, position } = await request.json();
+
+        // Need boardId for activity logging
+        const { data: listData } = await supabaseAdmin
+            .from('lists')
+            .select('board_id')
+            .eq('id', listId)
+            .single();
 
         const { data: card, error } = await supabaseAdmin
             .from('cards')
@@ -28,6 +36,15 @@ export async function POST(
             .single();
 
         if (error) throw error;
+
+        if (listData?.board_id) {
+            await logActivity({
+                boardId: listData.board_id,
+                userId: session.id,
+                action: 'created card',
+                metadata: { target_name: title }
+            });
+        }
 
         // Initialize counts for local store
         card._count = { comments: 0, checklist_items: 0, attachments: 0 };

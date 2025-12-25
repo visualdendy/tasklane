@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from '@/lib/auth';
 import { createNotification } from '@/lib/notifications';
+import { logActivity } from '@/lib/activity';
 
 export async function POST(
     request: Request,
@@ -49,6 +50,14 @@ export async function POST(
                 ...(assignees?.map((a: any) => a.user_id) || []),
                 boardDetails.boards.owner_id
             ]);
+
+            // Log activity
+            await logActivity({
+                boardId: boardDetails.board_id,
+                userId: session.id,
+                action: 'commented on card',
+                metadata: { target_name: cardTitle }
+            });
 
             for (const recipientId of recipients) {
                 if (recipientId !== session.id) {

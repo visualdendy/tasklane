@@ -31,16 +31,19 @@ async function deploy() {
 
         // 4. Read .env and push variables
         const envPath = path.join(__dirname, '.env');
+        console.log(`🔍 Looking for .env at: ${envPath}`);
         if (fs.existsSync(envPath)) {
-            console.log('📤 Syncing environment variables from .env to Vercel...');
+            console.log('✅ .env file found!');
             const envContent = fs.readFileSync(envPath, 'utf8');
             const lines = envContent.split(/\r?\n/);
+            console.log(`📄 Found ${lines.length} lines in .env`);
 
             const { spawnSync } = require('child_process');
 
             for (const line of lines) {
                 const trimmed = line.trim();
                 if (trimmed && !trimmed.startsWith('#')) {
+                    console.log(`Processing line: ${trimmed.split('=')[0]}`);
                     const delimiterIndex = trimmed.indexOf('=');
                     if (delimiterIndex === -1) continue;
 
