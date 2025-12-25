@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
         if (error) throw error;
 
-        const token = generateToken({ id: user.id, email: user.email, role: user.role });
+        const token = await generateToken({ id: user.id, email: user.email, role: user.role });
 
         const response = NextResponse.json({
             success: true,

@@ -32,8 +32,8 @@ export default function LoginPage() {
             }
 
             toast.success('Welcome back to TaskLane!');
-            router.push('/boards');
-            router.refresh();
+            // Use window.location for a full reload/redirect to ensure cookies are picked up
+            window.location.href = '/boards';
         } catch (error: any) {
             toast.error(error.message);
         } finally {

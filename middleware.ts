@@ -17,32 +17,37 @@ export async function middleware(request: NextRequest) {
 
     if (isPublicPath) {
         // If user is already authenticated and trying to access auth pages, redirect to boards
-        if (token && pathname.startsWith('/auth')) {
-            return NextResponse.redirect(new URL('/boards', request.url));
+        if (token && (pathname === '/' || pathname.startsWith('/auth'))) {
+            try {
+                await jwtVerify(token, JWT_SECRET);
+                return NextResponse.redirect(new URL('/boards', request.url));
+            } catch (error) {
+                // Token invalid, let them stay on public path
+                return NextResponse.next();
+            }
         }
         return NextResponse.next();
     }
 
     // Protected paths
     if (!token) {
-        // API routes should return 401
         if (pathname.startsWith('/api')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        // Pages should redirect to login
         return NextResponse.redirect(new URL('/auth/login', request.url));
     }
 
     try {
-        // Verify token using jose (middleware requires edge-compatible tools)
         await jwtVerify(token, JWT_SECRET);
         return NextResponse.next();
     } catch (error) {
-        // Invalid token
         if (pathname.startsWith('/api')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        return NextResponse.redirect(new URL('/auth/login', request.url));
+        // Instead of just redirecting, we should also clear the invalid cookie to avoid loops
+        const response = NextResponse.redirect(new URL('/auth/login', request.url));
+        response.cookies.delete('tasklane-token');
+        return response;
     }
 }
 
