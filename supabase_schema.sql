@@ -125,16 +125,20 @@ CREATE TABLE IF NOT EXISTS comments (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS activity_logs (
+CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  action TEXT NOT NULL,
-  entity_type TEXT NOT NULL,
-  entity_id UUID NOT NULL,
+  type TEXT NOT NULL,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  board_id UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
-  metadata JSONB,
+  actor_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  entity_id UUID,
+  entity_type TEXT,
+  content TEXT,
+  is_read BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Index for performance
+CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id);
 
 -- 4. PERMISSIONS (DISABLE RLS FOR EASY LOCAL DEV)
 -- This allows your app to work immediately without complex policy setup
@@ -150,15 +154,21 @@ ALTER TABLE checklist_items DISABLE ROW LEVEL SECURITY;
 ALTER TABLE attachments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE comments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
 
--- 5. AUTOMATIC BUCKET CREATION (ATTACHMENTS)
--- This ensures the 'attachments' bucket exists for your files
+-- 5. AUTOMATIC BUCKET CREATION
+-- Attachments bucket
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('attachments', 'attachments', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Storage Policy: Allow public access to attachments
-CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'attachments');
-CREATE POLICY "Public Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'attachments');
-CREATE POLICY "Public Update" ON storage.objects FOR UPDATE USING (bucket_id = 'attachments');
-CREATE POLICY "Public Delete" ON storage.objects FOR DELETE USING (bucket_id = 'attachments');
+-- Profile Photos bucket
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('profile-photos', 'profile-photos', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage Policy: Allow public access
+CREATE POLICY "Public Access Attachments" ON storage.objects FOR SELECT USING (bucket_id = 'attachments');
+CREATE POLICY "Public Upload Attachments" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'attachments');
+CREATE POLICY "Public Access Photos" ON storage.objects FOR SELECT USING (bucket_id = 'profile-photos');
+CREATE POLICY "Public Upload Photos" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'profile-photos');

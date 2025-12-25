@@ -10,19 +10,25 @@ export async function middleware(request: NextRequest) {
     const token = request.cookies.get('tasklane-token')?.value;
     const { pathname } = request.nextUrl;
 
+    console.log(`[Middleware] Request: ${pathname} | Token: ${token ? 'Present' : 'Missing'}`);
+
+    if (!process.env.JWT_SECRET) {
+        console.error('[Middleware] CRITICAL: JWT_SECRET is not defined in environment variables!');
+    }
+
     // Public paths
     const isPublicPath = pathname === '/' ||
         pathname.startsWith('/auth') ||
         pathname.startsWith('/api/auth');
 
     if (isPublicPath) {
-        // If user is already authenticated and trying to access auth pages, redirect to boards
         if (token && (pathname === '/' || pathname.startsWith('/auth'))) {
             try {
                 await jwtVerify(token, JWT_SECRET);
+                console.log('[Middleware] Valid token on public path, redirecting to /boards');
                 return NextResponse.redirect(new URL('/boards', request.url));
-            } catch (error) {
-                // Token invalid, let them stay on public path
+            } catch (error: any) {
+                console.log(`[Middleware] Public path token verification failed: ${error.message}`);
                 return NextResponse.next();
             }
         }
@@ -31,6 +37,7 @@ export async function middleware(request: NextRequest) {
 
     // Protected paths
     if (!token) {
+        console.log(`[Middleware] No token for protected path ${pathname}, redirecting to login`);
         if (pathname.startsWith('/api')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
@@ -39,12 +46,13 @@ export async function middleware(request: NextRequest) {
 
     try {
         await jwtVerify(token, JWT_SECRET);
+        console.log(`[Middleware] Token verified for ${pathname}`);
         return NextResponse.next();
-    } catch (error) {
+    } catch (error: any) {
+        console.error(`[Middleware] VERIFICATION FAILED for ${pathname}: ${error.message}`);
         if (pathname.startsWith('/api')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        // Instead of just redirecting, we should also clear the invalid cookie to avoid loops
         const response = NextResponse.redirect(new URL('/auth/login', request.url));
         response.cookies.delete('tasklane-token');
         return response;

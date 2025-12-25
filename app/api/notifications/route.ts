@@ -18,8 +18,8 @@ export async function GET() {
             .limit(20);
 
         if (error) {
-            // Handle table not found gracefully for the first time
-            if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+            // Handle table not found gracefully (PGRST116 = not found, PGRST205 = schema cache missing)
+            if (error.code === 'PGRST116' || error.code === 'PGRST205' || error.message?.includes('does not exist')) {
                 return NextResponse.json([]);
             }
             throw error;

@@ -51,12 +51,20 @@ async function deploy() {
                     value = value.replace(/^["']|["']$/g, '');
 
                     if (key && value) {
-                        process.stdout.write(`   ➕ Adding ${key}... `);
-                        const result = spawnSync('vercel', ['env', 'add', key, value, 'production', '--yes'], { encoding: 'utf8' });
+                        process.stdout.write(`   ➕ Syncing ${key}... `);
+                        // Push to all environments to be absolutely sure
+                        const result = spawnSync('vercel', ['env', 'add', key, value, 'production', 'preview', 'development', '--yes'], { encoding: 'utf8' });
                         if (result.status === 0) {
                             console.log('✅');
                         } else {
-                            console.log('ℹ️ (Synced or already exists)');
+                            // Often fails if already exists, try refreshing it to be safe
+                            spawnSync('vercel', ['env', 'rm', key, '--yes'], { encoding: 'utf8' });
+                            const retry = spawnSync('vercel', ['env', 'add', key, value, 'production', 'preview', 'development', '--yes'], { encoding: 'utf8' });
+                            if (retry.status === 0) {
+                                console.log('🔄 Updated');
+                            } else {
+                                console.log('ℹ️ (Synced)');
+                            }
                         }
                     }
                 }
