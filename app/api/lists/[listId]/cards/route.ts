@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from '@/lib/auth';
 import { logActivity } from '@/lib/activity';
+import { updateBoardTimestamp } from '@/lib/boardUtils';
 
 export async function POST(
     request: Request,
@@ -44,6 +45,7 @@ export async function POST(
                 action: 'created card',
                 metadata: { target_name: title }
             });
+            await updateBoardTimestamp(listData.board_id);
         }
 
         // Initialize counts for local store

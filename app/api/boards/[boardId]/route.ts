@@ -109,7 +109,7 @@ export async function PATCH(
 
         const { data, error } = await supabaseAdmin
             .from('boards')
-            .update(body)
+            .update({ ...body, updated_at: new Date().toISOString() })
             .eq('id', boardId)
             .select()
             .single();

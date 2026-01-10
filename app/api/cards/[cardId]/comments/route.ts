@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from '@/lib/auth';
 import { createNotification } from '@/lib/notifications';
 import { logActivity } from '@/lib/activity';
+import { updateBoardTimestamp } from '@/lib/boardUtils';
 
 export async function POST(
     request: Request,
@@ -58,6 +59,8 @@ export async function POST(
                 action: 'commented on card',
                 metadata: { target_name: cardTitle }
             });
+
+            await updateBoardTimestamp(boardDetails.board_id);
 
             for (const recipientId of recipients) {
                 if (recipientId !== session.id) {

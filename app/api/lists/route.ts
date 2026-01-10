@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from '@/lib/auth';
 import { logActivity } from '@/lib/activity';
+import { updateBoardTimestamp } from '@/lib/boardUtils';
 
 export async function POST(request: Request) {
     try {
@@ -30,6 +31,8 @@ export async function POST(request: Request) {
             action: 'created list',
             metadata: { target_name: title }
         });
+
+        await updateBoardTimestamp(board_id);
 
         return NextResponse.json(list);
     } catch (error) {

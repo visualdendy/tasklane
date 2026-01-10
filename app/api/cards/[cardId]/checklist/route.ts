@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from '@/lib/auth';
+import { updateBoardTimestamp } from '@/lib/boardUtils';
 
 export async function POST(
     request: Request,
@@ -24,7 +25,22 @@ export async function POST(
             .select()
             .single();
 
+
         if (error) throw error;
+
+        // Fetch board_id to update timestamp
+        const { data: card } = await supabaseAdmin
+            .from('cards')
+            .select('list:lists(board_id)')
+            .eq('id', cardId)
+            .single();
+
+        // @ts-ignore
+        if (card?.list?.board_id) {
+            // @ts-ignore
+            await updateBoardTimestamp(card.list.board_id);
+        }
+
         return NextResponse.json(data);
     } catch (error) {
         console.error('Checklist POST error:', error);

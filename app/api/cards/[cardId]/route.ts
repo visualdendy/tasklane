@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from '@/lib/auth';
+import { updateBoardTimestamp } from '@/lib/boardUtils';
 
 export async function GET(
     request: Request,
@@ -63,10 +64,18 @@ export async function PATCH(
             .from('cards')
             .update(body)
             .eq('id', cardId)
-            .select()
+            .select(`
+                *,
+                list:lists(board_id)
+            `)
             .single();
 
         if (error) throw error;
+
+        if (card.list?.board_id) {
+            await updateBoardTimestamp(card.list.board_id);
+        }
+
         return NextResponse.json(card);
     } catch (error) {
         console.error('Card PATCH error:', error);
@@ -84,12 +93,26 @@ export async function DELETE(
 
         const { cardId } = await params;
 
+        // Get board_id before deleting
+        const { data: card } = await supabaseAdmin
+            .from('cards')
+            .select('list:lists(board_id)')
+            .eq('id', cardId)
+            .single();
+
         const { error } = await supabaseAdmin
             .from('cards')
             .delete()
             .eq('id', cardId);
 
         if (error) throw error;
+
+        // @ts-ignore
+        if (card?.list?.board_id) {
+            // @ts-ignore
+            await updateBoardTimestamp(card.list.board_id);
+        }
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Card DELETE error:', error);
